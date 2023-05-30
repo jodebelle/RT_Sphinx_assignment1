@@ -1,0 +1,198 @@
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" >
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>scripts.goal_count &mdash; assignment_2_2022 1.0 documentation</title>
+      <link rel="stylesheet" href="../../_static/pygments.css" type="text/css" />
+      <link rel="stylesheet" href="../../_static/css/theme.css" type="text/css" />
+      <link rel="stylesheet" href="../../_static/graphviz.css" type="text/css" />
+  <!--[if lt IE 9]>
+    <script src="../../_static/js/html5shiv.min.js"></script>
+  <![endif]-->
+  
+        <script data-url_root="../../" id="documentation_options" src="../../_static/documentation_options.js"></script>
+        <script src="../../_static/doctools.js"></script>
+        <script src="../../_static/sphinx_highlight.js"></script>
+    <script src="../../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../../genindex.html" />
+    <link rel="search" title="Search" href="../../search.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="../../index.html" class="icon icon-home">
+            assignment_2_2022
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <!-- Local TOC -->
+              <div class="local-toc"></div>
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../../index.html">assignment_2_2022</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../../index.html" class="icon icon-home" aria-label="Home"></a></li>
+          <li class="breadcrumb-item"><a href="../index.html">Module code</a></li>
+      <li class="breadcrumb-item active">scripts.goal_count</li>
+      <li class="wy-breadcrumbs-aside">
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <h1>Source code for scripts.goal_count</h1><div class="highlight"><pre>
+<span></span><span class="ch">#! /usr/bin/env python3</span>
+<span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">.. module:: goal_count</span>
+<span class="sd">	:platform: Unix</span>
+<span class="sd">	:synopsis: Development of 3 ROS nodes to interaact with a certain environment in which a robot moves in an arena.</span>
+<span class="sd">.. moduleauthor:: Josephine de Bellefroid</span>
+
+<span class="sd">This python code implements a service node. When the node is called,it prints how many times a desired position was reached or cancelled.</span>
+
+
+<span class="sd">Subscriber</span>
+<span class="sd">/robot_target/result</span>
+
+<span class="sd">Server:</span>
+<span class="sd">goal_count</span>
+
+<span class="sd">&quot;&quot;&quot;</span>
+
+<span class="kn">import</span> <span class="nn">rospy</span>
+<span class="kn">import</span> <span class="nn">actionlib</span>
+<span class="kn">import</span> <span class="nn">actionlib.msg</span>
+<span class="kn">import</span> <span class="nn">assignment_2_2022.msg</span>
+
+<span class="kn">from</span> <span class="nn">assignment_2_2022.srv</span> <span class="kn">import</span> <span class="n">target_srv</span><span class="p">,</span> <span class="n">target_srvResponse</span>
+
+<span class="n">goal_count</span> <span class="o">=</span> <span class="p">{</span><span class="s1">&#39;reached&#39;</span><span class="p">:</span> <span class="mi">0</span><span class="p">,</span> <span class="s1">&#39;cancelled&#39;</span><span class="p">:</span> <span class="mi">0</span><span class="p">}</span>
+
+<div class="viewcode-block" id="result"><a class="viewcode-back" href="../../index.html#scripts.goal_count.result">[docs]</a><span class="k">def</span> <span class="nf">result</span><span class="p">(</span><span class="n">msg</span><span class="p">):</span>
+
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">	 </span>
+<span class="sd">    Callback function that updates the goal count when a PlanningActionResult message is received.</span>
+
+<span class="sd">    :param msg: a PlanningActionResult message.</span>
+<span class="sd">    </span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    
+    <span class="k">global</span> <span class="n">goal_reached_callback</span><span class="p">,</span> <span class="n">goal_cancelled_callback</span>
+    
+    <span class="n">status</span><span class="o">=</span><span class="n">msg</span><span class="o">.</span><span class="n">status</span><span class="o">.</span><span class="n">status</span>
+
+    <span class="k">if</span> <span class="n">status</span> <span class="o">==</span> <span class="mi">2</span><span class="p">:</span> <span class="c1">#goal preempted</span>
+        <span class="n">goal_count</span><span class="p">[</span><span class="s1">&#39;cancelled&#39;</span><span class="p">]</span> <span class="o">+=</span> <span class="mi">1</span>
+    <span class="k">elif</span> <span class="n">status</span> <span class="o">==</span> <span class="mi">3</span><span class="p">:</span> <span class="c1">#goal reached</span>
+        <span class="n">goal_count</span><span class="p">[</span><span class="s1">&#39;reached&#39;</span><span class="p">]</span> <span class="o">+=</span> <span class="mi">1</span>
+
+    <span class="k">def</span> <span class="nf">goal_callback</span><span class="p">(</span><span class="n">req</span><span class="p">):</span>
+<span class="w">            </span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Service callback function that returns the number of goals that have been reached and cancelled.</span>
+
+<span class="sd">        :param req: a target_srvRequest message.</span>
+<span class="sd">        :return: a target_srvResponse message indicating that the goal count has been printed.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+            
+        <span class="nb">print</span> <span class="p">(</span><span class="s2">&quot;Number of goals reached:&quot;</span><span class="p">,</span> <span class="n">goal_count</span><span class="p">[</span><span class="s1">&#39;reached&#39;</span><span class="p">])</span>
+        <span class="nb">print</span> <span class="p">(</span><span class="s2">&quot;Number of goals cancelled:&quot;</span><span class="p">,</span> <span class="n">goal_count</span><span class="p">[</span><span class="s1">&#39;cancelled&#39;</span><span class="p">])</span>
+        <span class="k">return</span> <span class="n">target_srvResponse</span> <span class="p">(</span><span class="n">success</span> <span class="o">=</span> <span class="kc">True</span><span class="p">,</span> <span class="n">message</span> <span class="o">=</span> <span class="s2">&quot;Goal count printed&quot;</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">goal_reached_callback</span><span class="p">():</span>
+
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Callback function that increments the goal reached count when a goal is reached.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+
+        <span class="n">goal_count</span><span class="p">[</span><span class="s1">&#39;reached&#39;</span><span class="p">]</span> <span class="o">+=</span> <span class="mi">1</span>
+
+    <span class="k">def</span> <span class="nf">goal_cancelled_callback</span><span class="p">():</span>
+
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Callback function that increments the goal cancelled count when a goal is cancelled.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+
+        <span class="n">goal_count</span><span class="p">[</span><span class="s1">&#39;cancelled&#39;</span><span class="p">]</span> <span class="o">+=</span> <span class="mi">1</span>
+
+    <span class="k">def</span> <span class="nf">data</span><span class="p">(</span><span class="n">req</span><span class="p">):</span>
+
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Service callback function that returns the goal_reached_callback and goal_cancelled_callback functions.</span>
+
+<span class="sd">        :param req: a target_srvRequest message.</span>
+<span class="sd">        :return: a target_srvResponse message containing the goal_reached_callback and goal_cancelled_callback functions.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+
+        <span class="k">global</span> <span class="n">goal_reached_callback</span><span class="p">,</span> <span class="n">goal_cancelled_callback</span>
+        <span class="k">return</span> <span class="n">target_srvResponse</span><span class="p">(</span><span class="n">goal_reached_callback</span><span class="p">,</span> <span class="n">goal_cancelled_callback</span><span class="p">)</span></div>
+
+<div class="viewcode-block" id="main"><a class="viewcode-back" href="../../index.html#scripts.goal_count.main">[docs]</a><span class="k">def</span> <span class="nf">main</span><span class="p">():</span>
+
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    The main function that initializes the node, sets up the service and subscribers, and starts the spin loop.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+     
+    <span class="n">rospy</span><span class="o">.</span><span class="n">init_node</span><span class="p">(</span><span class="s1">&#39;goal_count&#39;</span><span class="p">)</span>
+    <span class="n">srv</span><span class="o">=</span> <span class="n">rospy</span><span class="o">.</span><span class="n">Service</span><span class="p">(</span><span class="s1">&#39;goal_count&#39;</span><span class="p">,</span> <span class="n">target_srv</span><span class="p">,</span> <span class="n">goal_callback</span><span class="p">)</span>
+    <span class="n">subscriber_result</span> <span class="o">=</span> <span class="n">rospy</span><span class="o">.</span><span class="n">Subscriber</span><span class="p">(</span><span class="s1">&#39;/robot_target/result&#39;</span><span class="p">,</span> <span class="n">assignment_2_2022</span><span class="o">.</span><span class="n">msg</span><span class="o">.</span><span class="n">PlanningActionResult</span><span class="p">,</span> <span class="n">result</span><span class="p">)</span>
+    <span class="n">rospy</span><span class="o">.</span><span class="n">spin</span><span class="p">()</span></div>
+
+<span class="k">if</span> <span class="vm">__name__</span> <span class="o">==</span> <span class="s2">&quot;__main__&quot;</span><span class="p">:</span>
+    <span class="n">main</span><span class="p">()</span>
+
+</pre></div>
+
+           </div>
+          </div>
+          <footer>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2023, Josephine de Bellefroid.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>
